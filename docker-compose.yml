@@ -1,0 +1,48 @@
+networks:
+  limesurvey:
+
+services:
+  limesurvey:
+    image: docker.io/acspri/limesurvey:latest
+    platform: linux/amd64
+    restart: always
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      - '${APP_PORT:-9514}:80'
+    volumes:
+      - ./data/limesurvey:/var/www/html/upload
+      - ./theme:/var/www/html/themes/survey/fruity_custom
+    environment:
+      LIMESURVEY_DB_TYPE: mysql
+      LIMESURVEY_DB_HOST: mariadb
+      LIMESURVEY_DB_PORT: 3306
+      LIMESURVEY_DB_NAME: limesurvey
+      LIMESURVEY_DB_USER: limesurvey
+      LIMESURVEY_DB_PASSWORD: ${DB_PASSWORD}
+      LIMESURVEY_ADMIN_USER: ${ADMIN_USER}
+      LIMESURVEY_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      LIMESURVEY_ADMIN_NAME: ${ADMIN_NAME}
+      LIMESURVEY_ADMIN_EMAIL: ${ADMIN_EMAIL}
+      BASE_URL: ${BASE_URL}
+    networks:
+      - limesurvey
+
+  mariadb:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: limesurvey
+      MARIADB_USER: limesurvey
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - limesurvey

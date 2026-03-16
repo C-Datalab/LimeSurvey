@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <metadata>
+        <name>fruity_custom</name>
+        <type>survey</type>
+        <title>Fruity Custom</title>
+        <description>Extended Fruity theme with custom JavaScript for dynamic list questions.</description>
+        <extends>fruity</extends>
+        <author>Internal</author>
+        <version>1.0</version>
+        <lastUpdate>2026-01-01</lastUpdate>
+    </metadata>
+    <files>
+        <js>
+            <filename>js/custom.js</filename>
+        </js>
+    </files>
+    <engine>
+        <cssframework>
+            <name>bootstrap</name>
+        </cssframework>
+        <load_core_theme>false</load_core_theme>
+    </engine>
+    <options>
+        <ajaxmode>on</ajaxmode>
+        <brandlogo>on</brandlogo>
+        <container>on</container>
+    </options>
+</config>
