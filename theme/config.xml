@@ -5,7 +5,7 @@
         <type>survey</type>
         <title>Fruity Custom</title>
         <description>Extended Fruity theme with custom JavaScript for dynamic list questions.</description>
-        <extends>fruity</extends>
+        <extends>fruity_twentythree</extends>
         <author>Internal</author>
         <version>1.0</version>
         <lastUpdate>2026-01-01</lastUpdate>

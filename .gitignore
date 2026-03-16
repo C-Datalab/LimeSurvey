@@ -1,0 +1,8 @@
+# Environment file — contains passwords, never commit this
+.env
+
+# Runtime data — database and uploads, never commit these
+data/
+
+# macOS
+.DS_Store
