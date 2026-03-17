@@ -5,11 +5,10 @@ All data stays on your own server — nothing is sent to external services.
 
 ## Stack
 
-| Service    | Image                        | Purpose                          |
-|------------|------------------------------|----------------------------------|
-| LimeSurvey | `acspri/limesurvey:latest`   | Survey platform (PHP)            |
-| MariaDB    | `mariadb:10.11`              | Database                         |
-| Mailpit    | `axllent/mailpit:latest`     | Local email catcher (dev/test)   |
+| Service    | Image                        | Purpose          |
+|------------|------------------------------|------------------|
+| LimeSurvey | `acspri/limesurvey:latest`   | Survey platform  |
+| MariaDB    | `mariadb:10.11`              | Database         |
 
 ---
 
@@ -41,39 +40,36 @@ Edit `.env` and set at minimum:
 bash limesurvey.sh
 ```
 
-Or manually:
-
-```bash
-docker compose up -d
-docker compose logs -f limesurvey
-```
-
 Wait for the log line: `AH00558: apache2: Could not reliably determine...` — that means it's ready.
 
 ### 4. Access
 
-| Interface        | URL                                    |
-|------------------|----------------------------------------|
-| Survey list      | `http://localhost:9514`                |
-| Admin panel      | `http://localhost:9514/index.php/admin`|
-| Mailpit (dev)    | `http://localhost:8027`                |
+| Interface   | URL                                     |
+|-------------|-----------------------------------------|
+| Survey list | `http://localhost:9514`                 |
+| Admin panel | `http://localhost:9514/index.php/admin` |
 
 Log in with the `ADMIN_USER` and `ADMIN_PASSWORD` from your `.env`.
 
 ---
 
+## User Management
+
+LimeSurvey does not have public self-signup. The admin creates all user accounts
+manually via **Administration → User Management → Add user**, setting credentials
+directly. No email infrastructure is required for internal use.
+
+Survey respondents do not need accounts — surveys are accessed via URL only.
+
+---
+
 ## Production Deployment (Linux Server)
 
-On a server, replace the Mailpit SMTP settings in `.env` with your real mail provider:
+Update `BASE_URL` in `.env` to your server's address:
 
 ```env
 BASE_URL=https://forms.yourcompany.com
-SMTP_HOST=smtp.yourprovider.com
-SMTP_PORT=587
-SMTP_FROM=noreply@yourcompany.com
 ```
-
-Mailpit is still started but unused — you can remove it from `docker-compose.yml` entirely if preferred.
 
 Put Nginx or Caddy in front of LimeSurvey for HTTPS. A minimal Caddy example:
 
@@ -95,36 +91,46 @@ chmod -R 777 ./data/limesurvey
 
 ---
 
-## Custom Theme & JavaScript
+## Custom Theme
 
 The `theme/` directory contains a pre-built extension of the Fruity theme (`fruity_custom`)
-that is mounted directly into the container. It includes a `custom.js` that adds a dynamic
-**"Add another item"** button to Multiple Short Text questions.
-
-The theme files are always present in the container — the only manual step is
-activating it once after first boot.
+mounted directly into the container. It is a placeholder for future JavaScript or CSS
+customisations — `theme/js/custom.js` is intentionally minimal.
 
 ### Activation (one-time, after first boot)
 
 1. Log in to the admin panel
 2. Go to **Configuration → Themes**
-3. You will see **Fruity Custom** already listed — click **Install**
+3. Click **Install** on **Fruity Custom**
 4. Go to **Configuration → Global Settings → General** and set the default theme to **Fruity Custom**
 
-That's it. The JavaScript is live for all surveys.
-
-### Using the dynamic list on a question
-
-1. Create a **Multiple Short Text** question
-2. Add sub-questions for the maximum number of items you expect (e.g. 10)
-3. In the question editor, go to the **Display** tab
-4. In the **CSS class** field, enter: `dynamic-add-list`
-5. Save — the question will now show one field at a time with an **+ Add another item** button
-
-### Updating the JavaScript
+### Adding future customisations
 
 Edit `theme/js/custom.js` in this repository and restart the stack —
-the change is reflected immediately since the directory is bind-mounted.
+changes are reflected immediately since the directory is bind-mounted.
+
+---
+
+## Dynamic List Questions
+
+For questions where respondents need to add multiple items (e.g. a list of URLs),
+use the native **Input on demand** question type — no custom JavaScript or CSS
+class required. LimeSurvey handles this natively with no item cap.
+
+---
+
+## Question Templates
+
+Reusable question templates are stored in `question-templates/` as `.lsq` files.
+
+**To import into a survey:** Add question → Import → select the `.lsq` file.
+
+**To export a new template:** In the survey structure, click `...` on the question → Export,
+then save the `.lsq` file into `question-templates/` and commit it to the repo.
+
+| File                | Description                                      |
+|---------------------|--------------------------------------------------|
+| `contact-info.lsq`  | Name, Email (validated), Location (optional)     |
 
 ---
 
@@ -138,9 +144,7 @@ data/
   limesurvey/    # Uploaded files and assets
 ```
 
-To back up, either:
-- Stop the stack and copy the `data/` directory, or
-- Use `mysqldump` for a portable database backup:
+To back up, either stop the stack and copy the `data/` directory, or use `mysqldump`:
 
 ```bash
 docker compose exec mariadb mysqldump -u limesurvey -p limesurvey > backup.sql
