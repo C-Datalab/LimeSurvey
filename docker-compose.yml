@@ -14,6 +14,8 @@ services:
     volumes:
       - ./data/limesurvey:/var/www/html/upload
       - ./theme:/var/www/html/themes/survey/fruity_custom
+      - ./locale/en/en.mo:/var/www/html/locale/en/en.mo
+      - ./locale/ja/ja.mo:/var/www/html/locale/ja/ja.mo
     environment:
       LIMESURVEY_DB_TYPE: mysql
       LIMESURVEY_DB_HOST: mariadb
