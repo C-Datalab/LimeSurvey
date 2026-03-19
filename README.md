@@ -93,20 +93,19 @@ chmod -R 777 ./data/limesurvey
 
 ## Custom Theme
 
-The `theme/` directory contains a pre-built extension of the Fruity theme (`fruity_custom`)
-mounted directly into the container. It is a placeholder for future JavaScript or CSS
-customisations — `theme/js/custom.js` is intentionally minimal.
+The `theme/` directory is a pre-built extension of the Fruity TwentyThree theme, bind-mounted
+directly into the container. Custom JavaScript lives in `theme/scripts/custom.js`.
 
 ### Activation (one-time, after first boot)
 
 1. Log in to the admin panel
 2. Go to **Configuration → Themes**
-3. Click **Install** on **Fruity Custom**
-4. Go to **Configuration → Global Settings → General** and set the default theme to **Fruity Custom**
+3. Click **Install** on the custom theme
+4. Go to **Configuration → Global Settings → General** and set it as the default theme
 
 ### Adding future customisations
 
-Edit `theme/js/custom.js` in this repository and restart the stack —
+Edit `theme/scripts/custom.js` in this repository and restart the stack —
 changes are reflected immediately since the directory is bind-mounted.
 
 ---
