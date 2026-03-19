@@ -17,23 +17,19 @@
  * Note: Dynamic "Add another item" behaviour is handled natively by LimeSurvey's
  *   built-in "Input on demand" question type — no custom JavaScript needed for that.
  *
- * ─── Contact Info Validation ─────────────────────────────────────────────────
- * Applies to any Multiple Short Text question with CSS class: contact-info
+ * ─── Email Validation ────────────────────────────────────────────────────────
+ * Automatically applies to any subquestion whose label contains "email",
+ * "e-mail", or "メールアドレス" (case-insensitive), in any Multiple Short Text
+ * question, on any survey using this theme.
  *
- * Setup in LimeSurvey question editor:
- *   1. Question Display tab → CSS class field → enter: contact-info
- *   2. Set each subquestion's Code field (not label) as follows:
- *        fullname  — validated as non-empty
- *        email     — validated as a properly formatted email address
+ * No CSS class or subquestion code convention required — detection is
+ * entirely label-based. Non-empty validation for other fields (e.g. name)
+ * is handled by LimeSurvey's native mandatory question setting.
  *
- * Validation fires on blur (when the field loses focus).
- * Errors clear automatically once the field has a valid value.
+ * Validation fires on blur. Error clears as soon as the value becomes valid.
  */
 
 $(document).on('ready pjax:complete', function () {
-
-    var $question = $('.contact-info');
-    if ($question.length === 0) return;
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -64,53 +60,43 @@ $(document).on('ready pjax:complete', function () {
         $msg.hide();
     }
 
-    // ── Full name — non-empty check ───────────────────────────────────────────
-
-    var $nameInput = $question.find('input[type="text"][name$="fullname"]');
-    if ($nameInput.length) {
-        var $nameError = makeError('Please enter a name');
-        $nameInput.closest('li').append($nameError);
-
-        $nameInput.on('blur', function () {
-            if ($nameInput.val().trim() === '') {
-                setError($nameInput, $nameError);
-            } else {
-                clearError($nameInput, $nameError);
-            }
-        });
-
-        $nameInput.on('input', function () {
-            if ($nameError.is(':visible') && $nameInput.val().trim() !== '') {
-                clearError($nameInput, $nameError);
-            }
-        });
-    }
-
-    // ── Email — regex check ───────────────────────────────────────────────────
+    // ── Email — label-based detection + regex check ───────────────────────────
+    // Matches labels containing "email", "e-mail", or "メールアドレス".
     // Use RegExp constructor to avoid LimeSurvey ExpressionScript interference
     // with curly-brace syntax. The pattern requires at least a two-letter TLD.
 
-    var $emailInput = $question.find('input[type="text"][name$="email"]');
-    if ($emailInput.length) {
-        var $emailError = makeError('Please enter a valid email address');
-        $emailInput.closest('li').append($emailError);
+    var emailLabelRegex = /e[\-\s]?mail|メールアドレス/i;
+    var emailRegex = new RegExp('^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z][a-zA-Z]+$');
 
-        var emailRegex = new RegExp('^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z][a-zA-Z]+$');
+    $('.subquestion-list li').each(function () {
+        var $li = $(this);
+        var labelText = $li.find('label').text().trim();
+        if (!emailLabelRegex.test(labelText)) return;
 
-        $emailInput.on('blur', function () {
-            var val = $emailInput.val().trim();
+        var $input = $li.find('input[type="text"]');
+        if (!$input.length) return;
+
+        // Guard against double-initialisation on pjax reloads
+        if ($input.data('ls-email-init')) return;
+        $input.data('ls-email-init', true);
+
+        var $error = makeError('Please enter a valid email address');
+        $li.append($error);
+
+        $input.on('blur', function () {
+            var val = $input.val().trim();
             if (val && !emailRegex.test(val)) {
-                setError($emailInput, $emailError);
+                setError($input, $error);
             } else {
-                clearError($emailInput, $emailError);
+                clearError($input, $error);
             }
         });
 
-        $emailInput.on('input', function () {
-            if ($emailError.is(':visible') && emailRegex.test($emailInput.val().trim())) {
-                clearError($emailInput, $emailError);
+        $input.on('input', function () {
+            if ($error.is(':visible') && emailRegex.test($input.val().trim())) {
+                clearError($input, $error);
             }
         });
-    }
+    });
 
 });
