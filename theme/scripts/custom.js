@@ -8,56 +8,109 @@
 /**
  * LimeSurvey Custom JavaScript
  * =============================
- * Place this file in your extended theme at: js/custom.js
- * See README.md for full setup instructions.
+ * File: theme/scripts/custom.js
+ * See README.md for setup instructions.
  *
  * Features:
- *   - Dynamic "Add another item" button for Multiple Short Text questions
+ *   - Email validation with inline error styling for Multiple Short Text questions
  *
- * Usage:
- *   In the question editor, go to the Display tab and add the CSS class:
- *     dynamic-add-list
- *   The question will then show one input at a time with a button to reveal more.
- *   The maximum number of items is controlled by how many sub-questions you define.
+ * Note: Dynamic "Add another item" behaviour is handled natively by LimeSurvey's
+ *   built-in "Input on demand" question type — no custom JavaScript needed for that.
+ *
+ * ─── Contact Info Validation ─────────────────────────────────────────────────
+ * Applies to any Multiple Short Text question with CSS class: contact-info
+ *
+ * Setup in LimeSurvey question editor:
+ *   1. Question Display tab → CSS class field → enter: contact-info
+ *   2. Set each subquestion's Code field (not label) as follows:
+ *        fullname  — validated as non-empty
+ *        email     — validated as a properly formatted email address
+ *
+ * Validation fires on blur (when the field loses focus).
+ * Errors clear automatically once the field has a valid value.
  */
 
 $(document).on('ready pjax:complete', function () {
 
-    // Only affect questions that have the 'dynamic-add-list' CSS class
-    $('.dynamic-add-list ul.subquestion-list').each(function () {
-        var $ul = $(this);
-        var $rows = $ul.find('li[id^="javatbd"]');
+    var $question = $('.contact-info');
+    if ($question.length === 0) return;
 
-        // Skip if only one item or already initialised
-        if ($rows.length <= 1) return;
-        if ($ul.data('dyn-init')) return;
-        $ul.data('dyn-init', true);
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
-        // Hide all rows after the first
-        $rows.each(function (i) {
-            if (i > 0) $(this).hide().addClass('ls-dyn-hidden');
+    function makeError(msg) {
+        return $(
+            '<div class="ls-field-error" style="'
+            + 'color:#cc0000;'
+            + 'font-size:0.9em;'
+            + 'margin-top:5px;'
+            + 'padding:8px 12px;'
+            + 'background:#fde8e8;'
+            + 'border-left:4px solid #cc0000;'
+            + 'border-radius:3px;'
+            + 'display:none;'
+            + '">' + msg + '</div>'
+        );
+    }
+
+    function setError($input, $msg) {
+        $input.closest('li').css('background', '#fde8e8');
+        $input.css({'border-color': '#cc0000', 'outline-color': '#cc0000'});
+        $msg.show();
+    }
+
+    function clearError($input, $msg) {
+        $input.closest('li').css('background', '');
+        $input.css({'border-color': '', 'outline-color': ''});
+        $msg.hide();
+    }
+
+    // ── Full name — non-empty check ───────────────────────────────────────────
+
+    var $nameInput = $question.find('input[type="text"][name$="fullname"]');
+    if ($nameInput.length) {
+        var $nameError = makeError('Please enter a name');
+        $nameInput.closest('li').append($nameError);
+
+        $nameInput.on('blur', function () {
+            if ($nameInput.val().trim() === '') {
+                setError($nameInput, $nameError);
+            } else {
+                clearError($nameInput, $nameError);
+            }
         });
 
-        // Inject the Add button below the list
-        var $btn = $('<button type="button" class="btn btn-primary btn-lg" style="margin-top:10px;">'
-            + '<span style="font-size:1.2em;margin-right:5px;">+</span>Add another item'
-            + '</button>');
-        $ul.after($btn);
+        $nameInput.on('input', function () {
+            if ($nameError.is(':visible') && $nameInput.val().trim() !== '') {
+                clearError($nameInput, $nameError);
+            }
+        });
+    }
 
-        // Scoped click handler per list so multiple questions don't share state
-        (function ($r, $b) {
-            $b.on('click', function (e) {
-                e.preventDefault();
-                var $next = $r.filter('.ls-dyn-hidden').first();
-                if ($next.length) {
-                    $next.removeClass('ls-dyn-hidden').show();
-                    $next.find('input[type="text"]').focus();
-                }
-                if ($r.filter('.ls-dyn-hidden').length === 0) {
-                    $b.prop('disabled', true).text('✓ Maximum items reached');
-                }
-            });
-        })($rows, $btn);
-    });
+    // ── Email — regex check ───────────────────────────────────────────────────
+    // Use RegExp constructor to avoid LimeSurvey ExpressionScript interference
+    // with curly-brace syntax. The pattern requires at least a two-letter TLD.
+
+    var $emailInput = $question.find('input[type="text"][name$="email"]');
+    if ($emailInput.length) {
+        var $emailError = makeError('Please enter a valid email address');
+        $emailInput.closest('li').append($emailError);
+
+        var emailRegex = new RegExp('^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z][a-zA-Z]+$');
+
+        $emailInput.on('blur', function () {
+            var val = $emailInput.val().trim();
+            if (val && !emailRegex.test(val)) {
+                setError($emailInput, $emailError);
+            } else {
+                clearError($emailInput, $emailError);
+            }
+        });
+
+        $emailInput.on('input', function () {
+            if ($emailError.is(':visible') && emailRegex.test($emailInput.val().trim())) {
+                clearError($emailInput, $emailError);
+            }
+        });
+    }
 
 });

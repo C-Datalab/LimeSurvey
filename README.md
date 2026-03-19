@@ -118,6 +118,25 @@ class required. LimeSurvey handles this natively with no item cap.
 
 ---
 
+## Email Validation
+
+The custom theme includes client-side email validation with inline error styling.
+It applies to any Multiple Short Text question configured as follows:
+
+**One-time setup per question:**
+
+1. In the question editor, open the **Display** tab and set **CSS class** to: `contact-info`
+2. On the email subquestion row, set the **Code** field (not the label) to: `email`
+
+The validator fires on blur. If the value is not a valid email address, the field gains a red
+border and an error message appears below it. Both clear as soon as a valid address is entered.
+
+> **Note:** The Code field is the short identifier in the subquestion row (e.g. `SQ001`, `SQ002`
+> by default). Change it to `email` so the JavaScript can locate it reliably regardless of
+> survey or question ID.
+
+---
+
 ## Question Templates
 
 Reusable question templates are stored in `question-templates/` as `.lsq` files.
