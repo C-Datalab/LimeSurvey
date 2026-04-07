@@ -142,26 +142,75 @@ border and an error message appears below it. Both clear as soon as a valid addr
 The `TeamsNotify` plugin posts a notification to a Teams channel whenever a survey response is submitted.
 It is bind-mounted from `plugins/TeamsNotify/` and activated via the LimeSurvey admin panel.
 
-### 1. Set up the Teams webhook URL
+The recommended integration path is **Power Automate** with an HTTP trigger — this is the most
+reliable option now that Microsoft has deprecated the old Incoming Webhook connectors.
 
-**New approach (recommended) — Teams Workflows:**
+---
 
-1. In Teams, navigate to the channel where you want notifications.
-2. Click **+** next to the channel name → **Workflows**.
-3. Search for **"Post to a channel when a webhook request is received"** and select it.
-4. Follow the wizard (give it a name, confirm the channel). You'll receive a webhook URL.
-5. Copy the URL — it looks like `https://prod-xx.westus.logic.azure.com/...`
+### 1. Create the Power Automate flow
 
-> **Payload format:** Select **Adaptive Card** in the plugin settings.
+1. Go to [make.powerautomate.com](https://make.powerautomate.com) and sign in.
+2. Click **+ Create** → **Instant cloud flow**.
+3. Name it (e.g. "LimeSurvey → Teams"), choose **"When a HTTP request is received"** as the trigger, click **Create**.
+4. In the trigger step, click **"Use sample payload to generate schema"** and paste the following, then click **Done**:
 
-**Legacy approach — Office 365 Incoming Webhook connector:**
+```json
+{
+  "survey_title": "My Survey",
+  "survey_id": 1,
+  "response_id": 42,
+  "timestamp": "2026-04-07 14:30:00 UTC",
+  "admin_url": "https://forms.example.com/index.php/admin/responses/sa/view/surveyid/1/id/42",
+  "respondent_name": "Jane Smith",
+  "respondent_email": "jane@example.com"
+}
+```
 
-1. In Teams, right-click the channel → **Connectors** (or **Manage channel** → **Connectors**).
-2. Add **Incoming Webhook**, give it a name and icon, click **Create**.
-3. Copy the webhook URL.
+5. Click **+ New step** → search for **"Post card in a chat or channel"** (Microsoft Teams action).
+   - **Post as:** Flow bot
+   - **Post in:** Channel
+   - **Team:** select your team
+   - **Channel:** select your channel
+   - **Adaptive Card:** paste the JSON below, then replace the placeholder values with dynamic content from the trigger (use the lightning bolt icon to insert fields):
 
-> **Payload format:** Select **Legacy MessageCard** in the plugin settings.
-> Note: Microsoft is phasing out Office 365 connectors — prefer the Workflows approach for new setups.
+```json
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.4",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "📋 New Survey Response",
+      "weight": "Bolder",
+      "size": "Medium"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        { "title": "Survey",      "value": "<survey_title dynamic content>" },
+        { "title": "Response ID", "value": "<response_id dynamic content>" },
+        { "title": "Submitted",   "value": "<timestamp dynamic content>" },
+        { "title": "Name",        "value": "<respondent_name dynamic content>" },
+        { "title": "Email",       "value": "<respondent_email dynamic content>" }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "View Response",
+      "url": "<admin_url dynamic content>"
+    }
+  ]
+}
+```
+
+> **Tip:** For the Name and Email facts, wrap them in a **Condition** step first
+> (`respondent_name is not equal to null`) so the card only shows those rows when the
+> survey actually collected contact information.
+
+6. **Save** the flow. The trigger step will now show the HTTP POST URL — copy it.
 
 ---
 
@@ -171,30 +220,43 @@ It is bind-mounted from `plugins/TeamsNotify/` and activated via the LimeSurvey 
 2. Go to **Configuration → Plugins**.
 3. Find **TeamsNotify** in the list and click **Activate**.
 4. Click **Settings** and fill in:
-   - **Teams Webhook URL** — paste the URL from step 1 above.
-   - **Payload format** — `Adaptive Card` for Workflows, `Legacy MessageCard` for old connectors.
-   - **Name subquestion code** — the subquestion code for the respondent's name field (default: `name`). Leave blank to omit.
-   - **Email subquestion code** — the subquestion code for the respondent's email field (default: `email`, matching the `contact-info.lsq` template). Leave blank to omit.
-   - **Restrict to survey IDs** — optional comma-separated list of survey IDs (e.g. `123,456`). Leave blank to notify for all surveys.
+   - **Webhook URL** — paste the Power Automate HTTP trigger URL.
+   - **Payload format** — `Power Automate (HTTP trigger — recommended)`.
+   - **Name subquestion code** — subquestion code for the respondent's name field (default: `name`). Leave blank to omit.
+   - **Email subquestion code** — subquestion code for the respondent's email field (default: `email`, matching the `contact-info.lsq` template). Leave blank to omit.
+   - **Restrict to survey IDs** — optional comma-separated list of survey IDs. Leave blank for all surveys.
 
 ---
 
-### 3. What the notification contains
+### 3. What the plugin sends
 
-Each Teams message includes:
+The plugin POSTs this JSON to Power Automate on every submission:
 
-| Field       | Source                                       |
-|-------------|----------------------------------------------|
-| Survey      | Survey title (localised)                     |
-| Response ID | LimeSurvey internal ID                       |
-| Submitted   | Timestamp with timezone                      |
-| Name        | Respondent's answer to the name subquestion (if configured) |
-| Email       | Respondent's answer to the email subquestion (if configured) |
-| Button      | **View Response** — deep link to the response in the admin panel |
+| Field              | Content                                         |
+|--------------------|-------------------------------------------------|
+| `survey_title`     | Survey title (localised)                        |
+| `survey_id`        | LimeSurvey survey ID                            |
+| `response_id`      | LimeSurvey response ID                          |
+| `timestamp`        | Submission time with timezone                   |
+| `admin_url`        | Deep link to the response in the admin panel    |
+| `respondent_name`  | Respondent's name (only if subquestion found)   |
+| `respondent_email` | Respondent's email (only if subquestion found)  |
 
 ---
 
-### 4. Restart after adding the plugin mount
+### 4. Alternative: legacy Office 365 Incoming Webhook connector
+
+If you have access to the old connector (some tenants still have it):
+
+1. In Teams, right-click the channel → **Connectors** → add **Incoming Webhook**.
+2. Copy the webhook URL.
+3. In plugin settings, set **Payload format** to `Legacy MessageCard`.
+
+> Note: Microsoft is phasing these out. Power Automate is the long-term path.
+
+---
+
+### 5. Restart after adding the plugin mount
 
 If you added the plugin volume mount to `docker-compose.yml` for the first time:
 
