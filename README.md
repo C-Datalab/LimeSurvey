@@ -137,6 +137,76 @@ border and an error message appears below it. Both clear as soon as a valid addr
 
 ---
 
+## Microsoft Teams Notifications
+
+The `TeamsNotify` plugin posts a notification to a Teams channel whenever a survey response is submitted.
+It is bind-mounted from `plugins/TeamsNotify/` and activated via the LimeSurvey admin panel.
+
+### 1. Set up the Teams webhook URL
+
+**New approach (recommended) — Teams Workflows:**
+
+1. In Teams, navigate to the channel where you want notifications.
+2. Click **+** next to the channel name → **Workflows**.
+3. Search for **"Post to a channel when a webhook request is received"** and select it.
+4. Follow the wizard (give it a name, confirm the channel). You'll receive a webhook URL.
+5. Copy the URL — it looks like `https://prod-xx.westus.logic.azure.com/...`
+
+> **Payload format:** Select **Adaptive Card** in the plugin settings.
+
+**Legacy approach — Office 365 Incoming Webhook connector:**
+
+1. In Teams, right-click the channel → **Connectors** (or **Manage channel** → **Connectors**).
+2. Add **Incoming Webhook**, give it a name and icon, click **Create**.
+3. Copy the webhook URL.
+
+> **Payload format:** Select **Legacy MessageCard** in the plugin settings.
+> Note: Microsoft is phasing out Office 365 connectors — prefer the Workflows approach for new setups.
+
+---
+
+### 2. Activate the plugin
+
+1. Log in to the LimeSurvey admin panel.
+2. Go to **Configuration → Plugins**.
+3. Find **TeamsNotify** in the list and click **Activate**.
+4. Click **Settings** and fill in:
+   - **Teams Webhook URL** — paste the URL from step 1 above.
+   - **Payload format** — `Adaptive Card` for Workflows, `Legacy MessageCard` for old connectors.
+   - **Name subquestion code** — the subquestion code for the respondent's name field (default: `name`). Leave blank to omit.
+   - **Email subquestion code** — the subquestion code for the respondent's email field (default: `email`, matching the `contact-info.lsq` template). Leave blank to omit.
+   - **Restrict to survey IDs** — optional comma-separated list of survey IDs (e.g. `123,456`). Leave blank to notify for all surveys.
+
+---
+
+### 3. What the notification contains
+
+Each Teams message includes:
+
+| Field       | Source                                       |
+|-------------|----------------------------------------------|
+| Survey      | Survey title (localised)                     |
+| Response ID | LimeSurvey internal ID                       |
+| Submitted   | Timestamp with timezone                      |
+| Name        | Respondent's answer to the name subquestion (if configured) |
+| Email       | Respondent's answer to the email subquestion (if configured) |
+| Button      | **View Response** — deep link to the response in the admin panel |
+
+---
+
+### 4. Restart after adding the plugin mount
+
+If you added the plugin volume mount to `docker-compose.yml` for the first time:
+
+```bash
+docker compose down && docker compose up -d
+```
+
+The plugin directory is bind-mounted, so edits to `plugins/TeamsNotify/TeamsNotify.php`
+take effect immediately — no container restart needed.
+
+---
+
 ## Question Templates
 
 Reusable question templates are stored in `question-templates/` as `.lsq` files.
