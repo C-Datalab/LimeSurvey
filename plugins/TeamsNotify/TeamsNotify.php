@@ -1,6 +1,6 @@
 <?php
 /**
- * TeamsNotify — LimeSurvey plugin
+ * TeamsNotify — LimeSurvey plugin 2026-04-08
  *
  * Posts a notification to a Microsoft Teams channel whenever a survey response
  * is submitted.
