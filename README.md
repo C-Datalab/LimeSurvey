@@ -244,7 +244,7 @@ The plugin POSTs this JSON to Power Automate on every submission:
 
 ---
 
-### 4. Alternative: legacy Office 365 Incoming Webhook connector
+### 4. Alternative: legacy Office 365 Incoming Webhook connector.
 
 If you have access to the old connector (some tenants still have it):
 
